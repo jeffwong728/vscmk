@@ -7,7 +7,18 @@
 	"settings": {
 		"files.associations": {
 			"thread": "cpp",
-			"chrono": "cpp"
+			"chrono": "cpp",
+			"array": "c",
+			"bitset": "c",
+			"deque": "c",
+			"initializer_list": "c",
+			"list": "c",
+			"type_traits": "c",
+			"vector": "c",
+			"xhash": "c",
+			"xstring": "c",
+			"xtree": "c",
+			"xutility": "c"
 		}
 	}
 }
