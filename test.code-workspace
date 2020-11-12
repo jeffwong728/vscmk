@@ -19,6 +19,7 @@
 			"xstring": "c",
 			"xtree": "c",
 			"xutility": "c"
-		}
+		},
+		"git.ignoreLimitWarning": true
 	}
 }
