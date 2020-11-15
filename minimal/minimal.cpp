@@ -1,13 +1,29 @@
 #include "wx/wxprec.h"
 #include "wx/wx.h"
 #include <gtk/gtk.h>
-#include <gmodule.h>
+#include <gmodule.h>s
 #include <glib/gprintf.h>
+#include <cairomm/cairomm.h>
+
+class BasicDrawPane : public wxPanel
+{
+
+public:
+    BasicDrawPane(wxFrame* parent);
+
+    void paintEvent(wxPaintEvent & evt);
+    void paintNow();
+
+    void render(wxDC& dc);
+
+    DECLARE_EVENT_TABLE()
+};
 
 class MyApp : public wxApp
 {
 public:
     virtual bool OnInit() wxOVERRIDE;
+    BasicDrawPane * drawPane;
 };
 
 class MyFrame : public wxFrame
@@ -37,6 +53,9 @@ wxBEGIN_EVENT_TABLE(MyFrame, wxFrame)
     EVT_MENU(Minimal_About, MyFrame::OnAbout)
 wxEND_EVENT_TABLE()
 
+BEGIN_EVENT_TABLE(BasicDrawPane, wxPanel)
+    EVT_PAINT(BasicDrawPane::paintEvent)
+    END_EVENT_TABLE()
 wxIMPLEMENT_APP(MyApp);
 
 bool MyApp::OnInit()
@@ -45,6 +64,13 @@ bool MyApp::OnInit()
         return false;
 
     MyFrame *frame = new MyFrame("Minimal wxWidgets App");
+
+    wxBoxSizer* sizer = new wxBoxSizer(wxHORIZONTAL);
+    drawPane = new BasicDrawPane((wxFrame*)frame);
+    sizer->Add(drawPane, 1, wxEXPAND);
+
+    frame->SetSizer(sizer);
+    frame->SetAutoLayout(true);
 
     GtkSettings *settings = gtk_settings_get_default();
     g_object_set(G_OBJECT(settings), "gtk-application-prefer-dark-theme", 1, NULL);
@@ -96,4 +122,57 @@ void MyFrame::OnQuit(wxCommandEvent& WXUNUSED(event))
 void MyFrame::OnAbout(wxCommandEvent& WXUNUSED(event))
 {
     gtk_window_set_interactive_debugging(1);
+}
+
+BasicDrawPane::BasicDrawPane(wxFrame* parent) :
+    wxPanel(parent)
+{
+}
+
+void BasicDrawPane::paintEvent(wxPaintEvent & evt)
+{
+    wxPaintDC dc(this);
+    render(dc);
+}
+
+void BasicDrawPane::paintNow()
+{
+    wxClientDC dc(this);
+    render(dc);
+}
+
+void BasicDrawPane::render(wxDC&  dc)
+{
+    // draw some text
+    dc.DrawText(wxT("Testing"), 40, 60);
+
+    // draw a circle
+    dc.SetBrush(*wxGREEN_BRUSH); // green filling
+    dc.SetPen(wxPen(wxColor(255, 0, 0), 5)); // 5-pixels-thick red outline
+    dc.DrawCircle(wxPoint(200, 100), 25 /* radius */);
+
+    // draw a rectangle
+    dc.SetBrush(*wxBLUE_BRUSH); // blue filling
+    dc.SetPen(wxPen(wxColor(255, 175, 175), 10)); // 10-pixels-thick pink outline
+    dc.DrawRectangle(300, 100, 400, 200);
+
+    // draw a line
+    dc.SetPen(wxPen(wxColor(0, 0, 0), 3)); // black line, 3 pixels thick
+    dc.DrawLine(300, 100, 700, 300); // draw line across the rectangle
+
+    cairo_t * cairoCtx = (cairo_t*)dc.GetImpl()->GetCairoContext();
+    ::cairo_move_to(cairoCtx, 100, 100);
+    ::cairo_line_to(cairoCtx, 500, 500);
+    ::cairo_close_path(cairoCtx);
+    ::cairo_stroke(cairoCtx);
+
+    auto crScr = std::make_shared<Cairo::Context>((cairo_t *)cairoCtx);
+    crScr->move_to(100, 200);
+    crScr->line_to(300, 300);
+    crScr->stroke();
+
+    auto ctx = Cairo::make_refptr_for_instance(new Cairo::Context((cairo_t *)cairoCtx));
+    ctx->move_to(200, 500);
+    ctx->line_to(600, 700);
+    ctx->stroke();
 }
