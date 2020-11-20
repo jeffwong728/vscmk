@@ -1,5 +1,7 @@
 build
 msvc
+application10
+widget-factory
 CMakeLists.txt.user
 CMakeCache.txt
 CMakeFiles

@@ -1,7 +1,8 @@
 #include "wx/wxprec.h"
 #include "wx/wx.h"
+#include "wx/overlay.h"
 #include <gtk/gtk.h>
-#include <gmodule.h>s
+#include <gmodule.h>
 #include <glib/gprintf.h>
 #include <cairomm/cairomm.h>
 
@@ -15,6 +16,14 @@ public:
     void paintNow();
 
     void render(wxDC& dc);
+    void OnLeftMouseDown(wxMouseEvent &e);
+    void OnLeftMouseUp(wxMouseEvent &e);
+    void OnMouseMove(wxMouseEvent &e);
+    static wxRect GetRegularRectangle(const wxPoint &pt1, const wxPoint &pt2);
+    wxPoint    m_lastPos;
+    wxPoint    m_mousePos;
+    wxPoint    m_mouseAnchor;
+    bool m_rubberBanding{false};
 
     DECLARE_EVENT_TABLE()
 };
@@ -127,6 +136,9 @@ void MyFrame::OnAbout(wxCommandEvent& WXUNUSED(event))
 BasicDrawPane::BasicDrawPane(wxFrame* parent) :
     wxPanel(parent)
 {
+    Bind(wxEVT_LEFT_DOWN, &BasicDrawPane::OnLeftMouseDown, this, wxID_ANY);
+    Bind(wxEVT_LEFT_UP, &BasicDrawPane::OnLeftMouseUp, this, wxID_ANY);
+    Bind(wxEVT_MOTION, &BasicDrawPane::OnMouseMove, this, wxID_ANY);
 }
 
 void BasicDrawPane::paintEvent(wxPaintEvent & evt)
@@ -143,36 +155,63 @@ void BasicDrawPane::paintNow()
 
 void BasicDrawPane::render(wxDC&  dc)
 {
-    // draw some text
-    dc.DrawText(wxT("Testing"), 40, 60);
+    if (m_rubberBanding)
+    {
+        wxPoint tlPos{ std::min(m_mouseAnchor.x, m_mousePos.x), std::min(m_mouseAnchor.y, m_mousePos.y) };
+        wxPoint brPos{ std::max(m_mouseAnchor.x, m_mousePos.x), std::max(m_mouseAnchor.y, m_mousePos.y) };
 
-    // draw a circle
-    dc.SetBrush(*wxGREEN_BRUSH); // green filling
-    dc.SetPen(wxPen(wxColor(255, 0, 0), 5)); // 5-pixels-thick red outline
-    dc.DrawCircle(wxPoint(200, 100), 25 /* radius */);
+        dc.SetBrush(*wxTRANSPARENT_BRUSH);
+        dc.SetPen(wxPen(wxColor(255, 0, 255, 255), 1));
+        dc.DrawRectangle(wxRect(tlPos, brPos));
+    }
+}
 
-    // draw a rectangle
-    dc.SetBrush(*wxBLUE_BRUSH); // blue filling
-    dc.SetPen(wxPen(wxColor(255, 175, 175), 10)); // 10-pixels-thick pink outline
-    dc.DrawRectangle(300, 100, 400, 200);
+void BasicDrawPane::OnLeftMouseDown(wxMouseEvent &e)
+{
+    if (!HasCapture())
+    {
+        CaptureMouse();
+    }
 
-    // draw a line
-    dc.SetPen(wxPen(wxColor(0, 0, 0), 3)); // black line, 3 pixels thick
-    dc.DrawLine(300, 100, 700, 300); // draw line across the rectangle
+    m_rubberBanding = true;
+    m_lastPos = e.GetPosition();
+    m_mousePos = e.GetPosition();
+    m_mouseAnchor = e.GetPosition();
+}
 
-    cairo_t * cairoCtx = (cairo_t*)dc.GetImpl()->GetCairoContext();
-    ::cairo_move_to(cairoCtx, 100, 100);
-    ::cairo_line_to(cairoCtx, 500, 500);
-    ::cairo_close_path(cairoCtx);
-    ::cairo_stroke(cairoCtx);
+void BasicDrawPane::OnLeftMouseUp(wxMouseEvent &e)
+{
+    m_rubberBanding = false;
 
-    auto crScr = std::make_shared<Cairo::Context>((cairo_t *)cairoCtx);
-    crScr->move_to(100, 200);
-    crScr->line_to(300, 300);
-    crScr->stroke();
+    if (HasCapture())
+    {
+        ReleaseMouse();
+    }
 
-    auto ctx = Cairo::make_refptr_for_instance(new Cairo::Context((cairo_t *)cairoCtx));
-    ctx->move_to(200, 500);
-    ctx->line_to(600, 700);
-    ctx->stroke();
+    m_lastPos = m_mousePos;
+    m_mousePos = e.GetPosition();
+    wxRect oldRect = GetRegularRectangle(m_mouseAnchor, m_lastPos);
+    wxRect newRect = GetRegularRectangle(m_mouseAnchor, m_mousePos);
+
+    wxRect invalidRect = oldRect.Union(newRect);
+    Refresh(false, &invalidRect);
+}
+
+void BasicDrawPane::OnMouseMove(wxMouseEvent &e)
+{
+    m_lastPos = m_mousePos;
+    m_mousePos = e.GetPosition();
+    wxRect oldRect = GetRegularRectangle(m_mouseAnchor, m_lastPos);
+    wxRect newRect = GetRegularRectangle(m_mouseAnchor, m_mousePos);
+
+    wxRect invalidRect = oldRect.Union(newRect);
+    Refresh(false, &invalidRect);
+}
+
+wxRect BasicDrawPane::GetRegularRectangle(const wxPoint &pt1, const wxPoint &pt2)
+{
+    wxPoint tlPos{ std::min(pt1.x, pt2.x), std::min(pt1.y, pt2.y) };
+    wxPoint brPos{ std::max(pt1.x, pt2.x), std::max(pt1.y, pt2.y) };
+    wxRect invalidRect(tlPos + wxPoint(-2, -2), brPos + wxPoint(2, 2));
+    return invalidRect;
 }
