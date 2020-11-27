@@ -34,11 +34,13 @@ target_link_libraries(apue PRIVATE Boost::filesystem Boost::chrono)
 
 add_executable(gtkhello gtk_hello.c builder.ui)
 add_executable(sunny sunny.c)
+add_executable(tool_palette tool_palette.c)
 add_executable(application10 application10/exampleapp.c application10/exampleapp.h application10/exampleappprefs.c application10/exampleappprefs.h application10/exampleappwin.c application10/exampleappwin.h application10/main.c application10/resources.c)
 
 set(gtktargets)
 list(APPEND gtktargets gtkhello)
 list(APPEND gtktargets sunny)
+list(APPEND gtktargets tool_palette)
 list(APPEND gtktargets application10)
 
 if(WIN32 AND MSVC)
